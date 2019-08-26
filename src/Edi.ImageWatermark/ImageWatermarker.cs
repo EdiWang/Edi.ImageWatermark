@@ -25,7 +25,8 @@ namespace Edi.ImageWatermark
             WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
             int textPadding = 10,
             int fontSize = 20,
-            Font font = null)
+            Font font = null, 
+            bool textAntiAlias = true)
         {
             using (var watermarkedStream = new MemoryStream())
             using (var img = Image.FromStream(_originImageStream))
@@ -37,6 +38,11 @@ namespace Edi.ImageWatermark
 
                 using (var graphic = Graphics.FromImage(img))
                 {
+                    if (textAntiAlias)
+                    {
+                        graphic.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                    }
+                
                     var brush = new SolidBrush(color);
 
                     var f = font ?? new Font(FontFamily.GenericSansSerif, fontSize,
