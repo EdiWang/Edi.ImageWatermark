@@ -1,7 +1,7 @@
 # Edi.ImageWatermark
 Add watermark to images in .NET Core
 
-[![Build status](https://dev.azure.com/ediwang/EdiWang-GitHub-Builds/_apis/build/status/Edi.ImageWatermark-CI)](https://dev.azure.com/ediwang/EdiWang-GitHub-Builds/_build/latest?definitionId=-1)
+![.NET Core](https://github.com/EdiWang/Edi.ImageWatermark/workflows/.NET%20Core/badge.svg)
 
 [![NuGet][main-nuget-badge]][main-nuget]
 
