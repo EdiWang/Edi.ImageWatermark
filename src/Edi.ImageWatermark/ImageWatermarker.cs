@@ -7,7 +7,7 @@ namespace Edi.ImageWatermark
 {
     public interface IImageWatermarker
     {
-        void SkipImageSize(int pixelsThreshold);
+        IImageWatermarker SkipImageSize(int pixelsThreshold);
 
         MemoryStream AddWatermark(string watermarkText, Color color,
             WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
@@ -30,15 +30,17 @@ namespace Edi.ImageWatermark
             _imgExtensionName = imgExtensionName;
         }
 
-        public void SkipImageSize(int pixelsThreshold)
+        public IImageWatermarker SkipImageSize(int pixelsThreshold)
         {
-            if (_pixelsThreshold <= 0)
+            if (pixelsThreshold <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(pixelsThreshold), "value must be greater than zero.");
             }
 
             _skipImageSize = true;
             _pixelsThreshold = pixelsThreshold;
+
+            return this;
         }
 
         public MemoryStream AddWatermark(string watermarkText, Color color,
