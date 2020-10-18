@@ -5,7 +5,19 @@ using System.IO;
 
 namespace Edi.ImageWatermark
 {
-    public class ImageWatermarker : IDisposable
+    public interface IImageWatermarker
+    {
+        void SkipImageSize(int pixelsThreshold);
+
+        MemoryStream AddWatermark(string watermarkText, Color color,
+            WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
+            int textPadding = 10,
+            int fontSize = 20,
+            Font font = null,
+            bool textAntiAlias = true);
+    }
+
+    public class ImageWatermarker : IDisposable, IImageWatermarker
     {
         private bool _skipImageSize;
         private int _pixelsThreshold;
