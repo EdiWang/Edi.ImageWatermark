@@ -7,12 +7,9 @@ namespace Edi.ImageWatermark
 {
     public class ImageWatermarker : IDisposable
     {
-        public bool SkipWatermarkForSmallImages { get; set; }
-
-        public int SmallImagePixelsThreshold { get; set; }
-
+        private bool _skipImageSize;
+        private int _pixelsThreshold;
         private readonly Stream _originImageStream;
-
         private readonly string _imgExtensionName;
 
         public ImageWatermarker(Stream originImageStream, string imgExtensionName)
@@ -21,16 +18,27 @@ namespace Edi.ImageWatermark
             _imgExtensionName = imgExtensionName;
         }
 
+        public void SkipImageSize(int pixelsThreshold)
+        {
+            if (_pixelsThreshold <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pixelsThreshold), "value must be greater than zero.");
+            }
+
+            _skipImageSize = true;
+            _pixelsThreshold = pixelsThreshold;
+        }
+
         public MemoryStream AddWatermark(string watermarkText, Color color,
             WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
             int textPadding = 10,
             int fontSize = 20,
-            Font font = null, 
+            Font font = null,
             bool textAntiAlias = true)
         {
             using var watermarkedStream = new MemoryStream();
             using var img = Image.FromStream(_originImageStream);
-            if (SkipWatermarkForSmallImages && img.Height * img.Width < SmallImagePixelsThreshold)
+            if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
             {
                 return null;
             }
@@ -40,7 +48,7 @@ namespace Edi.ImageWatermark
             {
                 graphic.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
             }
-                
+
             var brush = new SolidBrush(color);
 
             var f = font ?? new Font(FontFamily.GenericSansSerif, fontSize,
