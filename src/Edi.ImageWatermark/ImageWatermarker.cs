@@ -28,71 +28,67 @@ namespace Edi.ImageWatermark
             Font font = null, 
             bool textAntiAlias = true)
         {
-            using (var watermarkedStream = new MemoryStream())
-            using (var img = Image.FromStream(_originImageStream))
+            using var watermarkedStream = new MemoryStream();
+            using var img = Image.FromStream(_originImageStream);
+            if (SkipWatermarkForSmallImages && img.Height * img.Width < SmallImagePixelsThreshold)
             {
-                if (SkipWatermarkForSmallImages && img.Height * img.Width < SmallImagePixelsThreshold)
-                {
-                    return null;
-                }
-
-                using (var graphic = Graphics.FromImage(img))
-                {
-                    if (textAntiAlias)
-                    {
-                        graphic.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
-                    }
-                
-                    var brush = new SolidBrush(color);
-
-                    var f = font ?? new Font(FontFamily.GenericSansSerif, fontSize,
-                                FontStyle.Bold, GraphicsUnit.Pixel);
-
-                    var textSize = graphic.MeasureString(watermarkText, f);
-                    int x = textPadding, y = textPadding;
-
-                    switch (watermarkPosition)
-                    {
-                        case WatermarkPosition.TopLeft:
-                            x = textPadding; y = textPadding;
-                            break;
-                        case WatermarkPosition.TopRight:
-                            x = img.Width - (int)textSize.Width - textPadding;
-                            y = textPadding;
-                            break;
-                        case WatermarkPosition.BottomLeft:
-                            x = textPadding;
-                            y = img.Height - (int)textSize.Height - textPadding;
-                            break;
-                        case WatermarkPosition.BottomRight:
-                            x = img.Width - (int)textSize.Width - textPadding;
-                            y = img.Height - (int)textSize.Height - textPadding;
-                            break;
-                        default:
-                            x = textPadding; y = textPadding;
-                            break;
-                    }
-
-                    graphic.DrawString(watermarkText, f, brush, new Point(x, y));
-
-                    ImageFormat fmt = null;
-                    switch (_imgExtensionName)
-                    {
-                        case ".png":
-                            fmt = ImageFormat.Png;
-                            break;
-                        case ".jpg":
-                        case ".jpeg":
-                            fmt = ImageFormat.Jpeg;
-                            break;
-                        case ".bmp":
-                            fmt = ImageFormat.Bmp;
-                            break;
-                    }
-                    img.Save(watermarkedStream, fmt);
-                    return watermarkedStream;
-                }
+                return null;
             }
+
+            using var graphic = Graphics.FromImage(img);
+            if (textAntiAlias)
+            {
+                graphic.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+            }
+                
+            var brush = new SolidBrush(color);
+
+            var f = font ?? new Font(FontFamily.GenericSansSerif, fontSize,
+                FontStyle.Bold, GraphicsUnit.Pixel);
+
+            var textSize = graphic.MeasureString(watermarkText, f);
+            int x = textPadding, y = textPadding;
+
+            switch (watermarkPosition)
+            {
+                case WatermarkPosition.TopLeft:
+                    x = textPadding; y = textPadding;
+                    break;
+                case WatermarkPosition.TopRight:
+                    x = img.Width - (int)textSize.Width - textPadding;
+                    y = textPadding;
+                    break;
+                case WatermarkPosition.BottomLeft:
+                    x = textPadding;
+                    y = img.Height - (int)textSize.Height - textPadding;
+                    break;
+                case WatermarkPosition.BottomRight:
+                    x = img.Width - (int)textSize.Width - textPadding;
+                    y = img.Height - (int)textSize.Height - textPadding;
+                    break;
+                default:
+                    x = textPadding; y = textPadding;
+                    break;
+            }
+
+            graphic.DrawString(watermarkText, f, brush, new Point(x, y));
+
+            ImageFormat fmt = null;
+            switch (_imgExtensionName)
+            {
+                case ".png":
+                    fmt = ImageFormat.Png;
+                    break;
+                case ".jpg":
+                case ".jpeg":
+                    fmt = ImageFormat.Jpeg;
+                    break;
+                case ".bmp":
+                    fmt = ImageFormat.Bmp;
+                    break;
+            }
+            img.Save(watermarkedStream, fmt);
+            return watermarkedStream;
         }
 
         public void Dispose()
