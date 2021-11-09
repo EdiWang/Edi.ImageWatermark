@@ -1,75 +1,59 @@
 ﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
+using SixLabors.Fonts;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Processing;
+using Color = SixLabors.ImageSharp.Color;
+using PointF = SixLabors.ImageSharp.PointF;
 
 namespace Edi.ImageWatermark
 {
     public interface IImageWatermarker
     {
-        IImageWatermarker SkipImageSize(int pixelsThreshold);
-
         MemoryStream AddWatermark(string watermarkText, Color color,
             WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
             int textPadding = 10,
             int fontSize = 20,
-            Font font = null,
-            bool textAntiAlias = true);
+            Font font = null);
     }
 
     public class ImageWatermarker : IDisposable, IImageWatermarker
     {
-        private bool _skipImageSize;
-        private int _pixelsThreshold;
+        private readonly bool _skipImageSize;
+        private readonly int _pixelsThreshold;
         private readonly Stream _originImageStream;
         private readonly string _imgExtensionName;
 
-        public ImageWatermarker(Stream originImageStream, string imgExtensionName)
+        public ImageWatermarker(Stream originImageStream, string imgExtensionName, int pixelsThreshold = 0)
         {
             _originImageStream = originImageStream;
             _imgExtensionName = imgExtensionName;
-        }
 
-        public IImageWatermarker SkipImageSize(int pixelsThreshold)
-        {
-            if (pixelsThreshold <= 0)
+            if (pixelsThreshold > 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(pixelsThreshold), "value must be greater than zero.");
+                _skipImageSize = true;
+                _pixelsThreshold = pixelsThreshold;
             }
-
-            _skipImageSize = true;
-            _pixelsThreshold = pixelsThreshold;
-
-            return this;
         }
 
         public MemoryStream AddWatermark(string watermarkText, Color color,
             WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
             int textPadding = 10,
             int fontSize = 20,
-            Font font = null,
-            bool textAntiAlias = true)
+            Font font = null)
         {
-            using var watermarkedStream = new MemoryStream();
-            using var img = Image.FromStream(_originImageStream);
+            using var img = Image.Load(_originImageStream);
             if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
             {
                 return null;
             }
 
-            using var graphic = Graphics.FromImage(img);
-            if (textAntiAlias)
-            {
-                graphic.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
-            }
+            using var watermarkedStream = new MemoryStream();
 
-            var brush = new SolidBrush(color);
-
-            var f = font ?? new Font(FontFamily.GenericSansSerif, fontSize,
-                FontStyle.Bold, GraphicsUnit.Pixel);
-
-            var textSize = graphic.MeasureString(watermarkText, f);
-            int x = textPadding, y = textPadding;
+            var f = font ?? SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
+            var textSize = TextMeasurer.Measure(watermarkText, new RendererOptions(f));
+            int x, y;
 
             switch (watermarkPosition)
             {
@@ -93,23 +77,22 @@ namespace Edi.ImageWatermark
                     break;
             }
 
-            graphic.DrawString(watermarkText, f, brush, new Point(x, y));
+            img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
 
-            ImageFormat fmt = null;
             switch (_imgExtensionName)
             {
                 case ".png":
-                    fmt = ImageFormat.Png;
+                    img.SaveAsPng(watermarkedStream);
                     break;
                 case ".jpg":
                 case ".jpeg":
-                    fmt = ImageFormat.Jpeg;
+                    img.SaveAsJpeg(watermarkedStream);
                     break;
                 case ".bmp":
-                    fmt = ImageFormat.Bmp;
+                    img.SaveAsBmp(watermarkedStream);
                     break;
             }
-            img.Save(watermarkedStream, fmt);
+
             return watermarkedStream;
         }
 
