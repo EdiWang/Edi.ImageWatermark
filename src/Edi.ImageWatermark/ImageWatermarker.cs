@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -51,7 +53,18 @@ namespace Edi.ImageWatermark
 
             using var watermarkedStream = new MemoryStream();
 
-            var f = font ?? SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
+            string fontName = string.Empty;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                fontName = "Arial";
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                fontName = GetAvailableFontForLinux();
+            }
+
+            var f = font ?? SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
             var textSize = TextMeasurer.Measure(watermarkText, new RendererOptions(f));
             int x, y;
 
@@ -99,6 +112,12 @@ namespace Edi.ImageWatermark
         public void Dispose()
         {
             _originImageStream?.Dispose();
+        }
+
+        private static string GetAvailableFontForLinux()
+        {
+            var fontList = new[] { "Arial", "Verdana", "Helvetica", "Tahoma", "Terminal", "Open Sans", "Ubuntu Mono" };
+            return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryFind(fontName, out _));
         }
     }
 }
