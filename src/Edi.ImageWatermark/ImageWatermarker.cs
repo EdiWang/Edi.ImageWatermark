@@ -65,7 +65,7 @@ namespace Edi.ImageWatermark
             }
 
             var f = font ?? SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
-            var textSize = TextMeasurer.Measure(watermarkText, new RendererOptions(f));
+            var textSize = TextMeasurer.Measure(watermarkText, new TextOptions(f));
             int x, y;
 
             switch (watermarkPosition)
@@ -129,7 +129,7 @@ namespace Edi.ImageWatermark
                 "DejaVu Sans",
                 "DejaVu Sans Mono"
             };
-            return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryFind(fontName, out _));
+            return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _));
         }
     }
 }
