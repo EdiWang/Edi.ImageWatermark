@@ -1,10 +1,9 @@
-﻿namespace Edi.ImageWatermark
+﻿namespace Edi.ImageWatermark;
+
+public enum WatermarkPosition
 {
-    public enum WatermarkPosition
-    {
-        TopLeft,
-        TopRight,
-        BottomLeft,
-        BottomRight
-    }
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight
 }

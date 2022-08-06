@@ -9,127 +9,126 @@ using SixLabors.ImageSharp.Processing;
 using Color = SixLabors.ImageSharp.Color;
 using PointF = SixLabors.ImageSharp.PointF;
 
-namespace Edi.ImageWatermark
+namespace Edi.ImageWatermark;
+
+public interface IImageWatermarker
 {
-    public interface IImageWatermarker
+    MemoryStream AddWatermark(string watermarkText, Color color,
+        WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
+        int textPadding = 10,
+        int fontSize = 20,
+        Font font = null);
+}
+
+public class ImageWatermarker : IDisposable, IImageWatermarker
+{
+    private readonly bool _skipImageSize;
+    private readonly int _pixelsThreshold;
+    private readonly Stream _originImageStream;
+    private readonly string _imgExtensionName;
+
+    public ImageWatermarker(Stream originImageStream, string imgExtensionName, int pixelsThreshold = 0)
     {
-        MemoryStream AddWatermark(string watermarkText, Color color,
-            WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
-            int textPadding = 10,
-            int fontSize = 20,
-            Font font = null);
+        _originImageStream = originImageStream;
+        _imgExtensionName = imgExtensionName;
+
+        if (pixelsThreshold > 0)
+        {
+            _skipImageSize = true;
+            _pixelsThreshold = pixelsThreshold;
+        }
     }
 
-    public class ImageWatermarker : IDisposable, IImageWatermarker
+    public MemoryStream AddWatermark(string watermarkText, Color color,
+        WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
+        int textPadding = 10,
+        int fontSize = 20,
+        Font font = null)
     {
-        private readonly bool _skipImageSize;
-        private readonly int _pixelsThreshold;
-        private readonly Stream _originImageStream;
-        private readonly string _imgExtensionName;
-
-        public ImageWatermarker(Stream originImageStream, string imgExtensionName, int pixelsThreshold = 0)
+        using var img = Image.Load(_originImageStream);
+        if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
         {
-            _originImageStream = originImageStream;
-            _imgExtensionName = imgExtensionName;
-
-            if (pixelsThreshold > 0)
-            {
-                _skipImageSize = true;
-                _pixelsThreshold = pixelsThreshold;
-            }
+            return null;
         }
 
-        public MemoryStream AddWatermark(string watermarkText, Color color,
-            WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
-            int textPadding = 10,
-            int fontSize = 20,
-            Font font = null)
+        using var watermarkedStream = new MemoryStream();
+
+        string fontName = string.Empty;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            using var img = Image.Load(_originImageStream);
-            if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
-            {
-                return null;
-            }
-
-            using var watermarkedStream = new MemoryStream();
-
-            string fontName = string.Empty;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                fontName = "Arial";
-            }
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                fontName = GetAvailableFontForLinux();
-            }
-
-            var f = font ?? SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
-            var textSize = TextMeasurer.Measure(watermarkText, new TextOptions(f));
-            int x, y;
-
-            switch (watermarkPosition)
-            {
-                case WatermarkPosition.TopLeft:
-                    x = textPadding; y = textPadding;
-                    break;
-                case WatermarkPosition.TopRight:
-                    x = img.Width - (int)textSize.Width - textPadding;
-                    y = textPadding;
-                    break;
-                case WatermarkPosition.BottomLeft:
-                    x = textPadding;
-                    y = img.Height - (int)textSize.Height - textPadding;
-                    break;
-                case WatermarkPosition.BottomRight:
-                    x = img.Width - (int)textSize.Width - textPadding;
-                    y = img.Height - (int)textSize.Height - textPadding;
-                    break;
-                default:
-                    x = textPadding; y = textPadding;
-                    break;
-            }
-
-            img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
-
-            switch (_imgExtensionName)
-            {
-                case ".png":
-                    img.SaveAsPng(watermarkedStream);
-                    break;
-                case ".jpg":
-                case ".jpeg":
-                    img.SaveAsJpeg(watermarkedStream);
-                    break;
-                case ".bmp":
-                    img.SaveAsBmp(watermarkedStream);
-                    break;
-            }
-
-            return watermarkedStream;
+            fontName = "Arial";
         }
 
-        public void Dispose()
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            _originImageStream?.Dispose();
+            fontName = GetAvailableFontForLinux();
         }
 
-        private static string GetAvailableFontForLinux()
+        var f = font ?? SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
+        var textSize = TextMeasurer.Measure(watermarkText, new TextOptions(f));
+        int x, y;
+
+        switch (watermarkPosition)
         {
-            var fontList = new[]
-            {
-                "Arial",
-                "Verdana",
-                "Helvetica",
-                "Tahoma",
-                "Terminal",
-                "Open Sans",
-                "Monospace",
-                "Ubuntu Mono",
-                "DejaVu Sans",
-                "DejaVu Sans Mono"
-            };
-            return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _));
+            case WatermarkPosition.TopLeft:
+                x = textPadding; y = textPadding;
+                break;
+            case WatermarkPosition.TopRight:
+                x = img.Width - (int)textSize.Width - textPadding;
+                y = textPadding;
+                break;
+            case WatermarkPosition.BottomLeft:
+                x = textPadding;
+                y = img.Height - (int)textSize.Height - textPadding;
+                break;
+            case WatermarkPosition.BottomRight:
+                x = img.Width - (int)textSize.Width - textPadding;
+                y = img.Height - (int)textSize.Height - textPadding;
+                break;
+            default:
+                x = textPadding; y = textPadding;
+                break;
         }
+
+        img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
+
+        switch (_imgExtensionName)
+        {
+            case ".png":
+                img.SaveAsPng(watermarkedStream);
+                break;
+            case ".jpg":
+            case ".jpeg":
+                img.SaveAsJpeg(watermarkedStream);
+                break;
+            case ".bmp":
+                img.SaveAsBmp(watermarkedStream);
+                break;
+        }
+
+        return watermarkedStream;
+    }
+
+    public void Dispose()
+    {
+        _originImageStream?.Dispose();
+    }
+
+    private static string GetAvailableFontForLinux()
+    {
+        var fontList = new[]
+        {
+            "Arial",
+            "Verdana",
+            "Helvetica",
+            "Tahoma",
+            "Terminal",
+            "Open Sans",
+            "Monospace",
+            "Ubuntu Mono",
+            "DejaVu Sans",
+            "DejaVu Sans Mono"
+        };
+        return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _));
     }
 }
