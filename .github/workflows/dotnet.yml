@@ -3,8 +3,6 @@ name: .NET Build and Pack
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 jobs:
   build:
