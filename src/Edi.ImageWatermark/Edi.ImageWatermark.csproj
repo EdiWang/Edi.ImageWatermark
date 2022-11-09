@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net6.0</TargetFrameworks>
+		<TargetFrameworks>net6.0;net7.0</TargetFrameworks>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Authors>Edi Wang</Authors>
 		<Company>edi.wang</Company>
@@ -9,8 +9,8 @@
 		<RepositoryType></RepositoryType>
 		<RepositoryUrl>https://github.com/EdiWang/Edi.ImageWatermark</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Version>2.6.2</Version>
-		<FileVersion>2.6.2.0</FileVersion>
+		<Version>2.7.0</Version>
+		<FileVersion>2.7.0.0</FileVersion>
 		<PackageTags>Watermark</PackageTags>
 	</PropertyGroup>
 
