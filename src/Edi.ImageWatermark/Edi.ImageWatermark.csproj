@@ -9,8 +9,8 @@
 		<RepositoryType></RepositoryType>
 		<RepositoryUrl>https://github.com/EdiWang/Edi.ImageWatermark</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Version>2.7.0</Version>
-		<FileVersion>2.7.0.0</FileVersion>
+		<Version>2.8.0</Version>
+		<FileVersion>2.8.0.0</FileVersion>
 		<PackageTags>Watermark</PackageTags>
 	</PropertyGroup>
 

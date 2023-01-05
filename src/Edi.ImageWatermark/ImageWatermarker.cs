@@ -54,7 +54,7 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
         using var watermarkedStream = new MemoryStream();
 
         string fontName = string.Empty;
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             fontName = "Arial";
         }
