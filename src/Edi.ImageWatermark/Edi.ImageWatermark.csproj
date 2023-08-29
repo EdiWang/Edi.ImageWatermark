@@ -9,14 +9,14 @@
 		<RepositoryType></RepositoryType>
 		<RepositoryUrl>https://github.com/EdiWang/Edi.ImageWatermark</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Version>2.8.0</Version>
-		<FileVersion>2.8.0.0</FileVersion>
+		<Version>2.9.0</Version>
+		<FileVersion>2.9.0.0</FileVersion>
 		<PackageTags>Watermark</PackageTags>
 	</PropertyGroup>
 
 	<ItemGroup>
 		
-		<PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta15" />
+		<PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
 	</ItemGroup>
 
 </Project>

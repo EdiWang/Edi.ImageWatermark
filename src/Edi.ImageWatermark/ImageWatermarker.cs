@@ -65,7 +65,7 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
         }
 
         var f = font ?? SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
-        var textSize = TextMeasurer.Measure(watermarkText, new TextOptions(f));
+        var textSize = TextMeasurer.MeasureBounds(watermarkText, new TextOptions(f));
         int x, y;
 
         switch (watermarkPosition)
