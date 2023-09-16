@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Version>2.9.1</Version>
+        <Version>2.10.0</Version>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Company>edi.wang</Company>
         <Authors>Edi Wang</Authors>
@@ -10,7 +10,7 @@
         <RepositoryType></RepositoryType>
         <RepositoryUrl>https://github.com/EdiWang/Edi.ImageWatermark</RepositoryUrl>
         <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
-        <FileVersion>2.9.0.0</FileVersion>
+        <FileVersion>2.10.0.0</FileVersion>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.0.0" />
