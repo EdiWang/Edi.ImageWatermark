@@ -1,22 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<TargetFrameworks>net6.0;net7.0</TargetFrameworks>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<Authors>Edi Wang</Authors>
-		<Company>edi.wang</Company>
-		<PackageProjectUrl>https://edi.wang</PackageProjectUrl>
-		<RepositoryType></RepositoryType>
-		<RepositoryUrl>https://github.com/EdiWang/Edi.ImageWatermark</RepositoryUrl>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Version>2.9.0</Version>
-		<FileVersion>2.9.0.0</FileVersion>
-		<PackageTags>Watermark</PackageTags>
-	</PropertyGroup>
-
-	<ItemGroup>
-		
-		<PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0" />
-	</ItemGroup>
-
+    <PropertyGroup>
+        <Version>2.9.1</Version>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Company>edi.wang</Company>
+        <Authors>Edi Wang</Authors>
+        <PackageTags>Watermark</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://edi.wang</PackageProjectUrl>
+        <RepositoryType></RepositoryType>
+        <RepositoryUrl>https://github.com/EdiWang/Edi.ImageWatermark</RepositoryUrl>
+        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+        <FileVersion>2.9.0.0</FileVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.0.0" />
+    </ItemGroup>
 </Project>
