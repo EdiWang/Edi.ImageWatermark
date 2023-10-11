@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Version>2.10.0</Version>
+        <Version>2.11.0</Version>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Company>edi.wang</Company>
         <Authors>Edi Wang</Authors>
@@ -9,10 +9,17 @@
         <PackageProjectUrl>https://edi.wang</PackageProjectUrl>
         <RepositoryType></RepositoryType>
         <RepositoryUrl>https://github.com/EdiWang/Edi.ImageWatermark</RepositoryUrl>
-        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
-        <FileVersion>2.10.0.0</FileVersion>
+        <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
+        <PackageIcon>edi-logo-blue.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Description>Add watermark to images</Description>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
+        <None Include="..\..\img\edi-logo-blue.png" Pack="true" PackagePath="\"/>
     </ItemGroup>
 </Project>
