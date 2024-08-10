@@ -51,7 +51,7 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
             return null;
         }
 
-        using var watermarkedStream = new MemoryStream();
+        var watermarkedStream = new MemoryStream();
 
         string fontName = string.Empty;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
@@ -109,10 +109,7 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
         return watermarkedStream;
     }
 
-    public void Dispose()
-    {
-        _originImageStream?.Dispose();
-    }
+    public void Dispose() => _originImageStream?.Dispose();
 
     private static string GetAvailableFontForLinux()
     {
