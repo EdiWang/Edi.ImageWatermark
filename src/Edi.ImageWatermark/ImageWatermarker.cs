@@ -29,8 +29,8 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
 
     public ImageWatermarker(Stream originImageStream, string imgExtensionName, int pixelsThreshold = 0)
     {
-        _originImageStream = originImageStream;
-        _imgExtensionName = imgExtensionName;
+        _originImageStream = originImageStream ?? throw new ArgumentNullException(nameof(originImageStream));
+        _imgExtensionName = imgExtensionName ?? throw new ArgumentNullException(nameof(imgExtensionName));
 
         if (pixelsThreshold > 0)
         {
@@ -45,6 +45,8 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
         int fontSize = 20,
         Font font = null)
     {
+        if (string.IsNullOrEmpty(watermarkText)) throw new ArgumentNullException(nameof(watermarkText));
+
         using var img = Image.Load(_originImageStream);
         if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
         {
@@ -53,63 +55,75 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
 
         var watermarkedStream = new MemoryStream();
 
-        string fontName = string.Empty;
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            fontName = "Arial";
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            fontName = GetAvailableFontForLinux();
-        }
-
+        string fontName = GetFontName();
         var f = font ?? SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
         var textSize = TextMeasurer.MeasureBounds(watermarkText, new TextOptions(f));
-        int x, y;
-
-        switch (watermarkPosition)
-        {
-            case WatermarkPosition.TopLeft:
-                x = textPadding; y = textPadding;
-                break;
-            case WatermarkPosition.TopRight:
-                x = img.Width - (int)textSize.Width - textPadding;
-                y = textPadding;
-                break;
-            case WatermarkPosition.BottomLeft:
-                x = textPadding;
-                y = img.Height - (int)textSize.Height - textPadding;
-                break;
-            case WatermarkPosition.BottomRight:
-                x = img.Width - (int)textSize.Width - textPadding;
-                y = img.Height - (int)textSize.Height - textPadding;
-                break;
-            default:
-                x = textPadding; y = textPadding;
-                break;
-        }
+        var (x, y) = GetWatermarkPosition(watermarkPosition, img.Width, img.Height, textSize.Width, textSize.Height, textPadding);
 
         img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
 
-        switch (_imgExtensionName)
-        {
-            case ".png":
-                img.SaveAsPng(watermarkedStream);
-                break;
-            case ".jpg":
-            case ".jpeg":
-                img.SaveAsJpeg(watermarkedStream);
-                break;
-            case ".bmp":
-                img.SaveAsBmp(watermarkedStream);
-                break;
-        }
+        SaveImage(img, watermarkedStream);
 
         return watermarkedStream;
     }
 
-    public void Dispose() => _originImageStream?.Dispose();
+    private string GetFontName()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return "Arial";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return GetAvailableFontForLinux();
+        }
+
+        throw new PlatformNotSupportedException("Unsupported platform");
+    }
+
+    private static (int x, int y) GetWatermarkPosition(WatermarkPosition position, int imgWidth, int imgHeight, float textWidth, float textHeight, int padding)
+    {
+        return position switch
+        {
+            WatermarkPosition.TopLeft => (padding, padding),
+            WatermarkPosition.TopRight => (imgWidth - (int)textWidth - padding, padding),
+            WatermarkPosition.BottomLeft => (padding, imgHeight - (int)textHeight - padding),
+            WatermarkPosition.BottomRight => (imgWidth - (int)textWidth - padding, imgHeight - (int)textHeight - padding),
+            _ => (padding, padding)
+        };
+    }
+
+    private void SaveImage(Image img, MemoryStream stream)
+    {
+        try
+        {
+            switch (_imgExtensionName.ToLower())
+            {
+                case ".png":
+                    img.SaveAsPng(stream);
+                    break;
+                case ".jpg":
+                case ".jpeg":
+                    img.SaveAsJpeg(stream);
+                    break;
+                case ".bmp":
+                    img.SaveAsBmp(stream);
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported image format: {_imgExtensionName}");
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to save image", ex);
+        }
+    }
+
+    public void Dispose()
+    {
+        _originImageStream?.Dispose();
+    }
 
     private static string GetAvailableFontForLinux()
     {
@@ -126,6 +140,6 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
             "DejaVu Sans",
             "DejaVu Sans Mono"
         };
-        return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _));
+        return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _)) ?? "Arial";
     }
 }
