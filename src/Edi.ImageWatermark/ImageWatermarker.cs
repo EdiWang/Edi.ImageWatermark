@@ -90,6 +90,7 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
             WatermarkPosition.TopRight => (imgWidth - (int)textWidth - padding, padding),
             WatermarkPosition.BottomLeft => (padding, imgHeight - (int)textHeight - padding),
             WatermarkPosition.BottomRight => (imgWidth - (int)textWidth - padding, imgHeight - (int)textHeight - padding),
+            WatermarkPosition.Center => ((imgWidth - (int)textWidth) / 2, (imgHeight - (int)textHeight) / 2),
             _ => (padding, padding)
         };
     }

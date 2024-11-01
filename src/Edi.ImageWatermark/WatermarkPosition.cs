@@ -5,5 +5,6 @@ public enum WatermarkPosition
     TopLeft,
     TopRight,
     BottomLeft,
-    BottomRight
+    BottomRight,
+    Center
 }
