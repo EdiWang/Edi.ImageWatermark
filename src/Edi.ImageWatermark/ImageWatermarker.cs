@@ -111,6 +111,12 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
                 case ".bmp":
                     img.SaveAsBmp(stream);
                     break;
+                case ".gif":
+                    img.SaveAsGif(stream);
+                    break;
+                case ".webp":
+                    img.SaveAsWebp(stream);
+                    break;
                 default:
                     throw new NotSupportedException($"Unsupported image format: {_imgExtensionName}");
             }
