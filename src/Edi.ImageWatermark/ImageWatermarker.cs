@@ -1,11 +1,11 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using SixLabors.Fonts;
+﻿using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Processing;
+using System;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using Color = SixLabors.ImageSharp.Color;
 using PointF = SixLabors.ImageSharp.PointF;
 
@@ -26,6 +26,7 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
     private readonly int _pixelsThreshold;
     private readonly Stream _originImageStream;
     private readonly string _imgExtensionName;
+    private bool _disposed;
 
     public ImageWatermarker(Stream originImageStream, string imgExtensionName, int pixelsThreshold = 0)
     {
@@ -45,9 +46,19 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
         int fontSize = 20,
         Font font = null)
     {
-        if (string.IsNullOrEmpty(watermarkText)) throw new ArgumentNullException(nameof(watermarkText));
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (string.IsNullOrWhiteSpace(watermarkText))
+            throw new ArgumentException("Watermark text cannot be null or whitespace.", nameof(watermarkText));
+
+        if (textPadding < 0)
+            throw new ArgumentOutOfRangeException(nameof(textPadding), "Text padding cannot be negative.");
+
+        if (fontSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(fontSize), "Font size must be positive.");
 
         using var img = Image.Load(_originImageStream);
+
         if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
         {
             return null;
@@ -55,19 +66,33 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
 
         var watermarkedStream = new MemoryStream();
 
-        string fontName = GetFontName();
-        var f = font ?? SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
-        var textSize = TextMeasurer.MeasureBounds(watermarkText, new TextOptions(f));
-        var (x, y) = GetWatermarkPosition(watermarkPosition, img.Width, img.Height, textSize.Width, textSize.Height, textPadding);
+        try
+        {
+            var f = font ?? ImageWatermarker.GetDefaultFont(fontSize);
+            var textSize = TextMeasurer.MeasureBounds(watermarkText, new TextOptions(f));
+            var (x, y) = GetWatermarkPosition(watermarkPosition, img.Width, img.Height, textSize.Width, textSize.Height, textPadding);
 
-        img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
+            img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
 
-        SaveImage(img, watermarkedStream);
+            SaveImage(img, watermarkedStream);
+            watermarkedStream.Position = 0; // Reset position for reading
 
-        return watermarkedStream;
+            return watermarkedStream;
+        }
+        catch
+        {
+            watermarkedStream?.Dispose();
+            throw;
+        }
     }
 
-    private string GetFontName()
+    private static Font GetDefaultFont(int fontSize)
+    {
+        var fontName = GetFontName();
+        return SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
+    }
+
+    private static string GetFontName()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
@@ -79,19 +104,23 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
             return GetAvailableFontForLinux();
         }
 
-        throw new PlatformNotSupportedException("Unsupported platform");
+        throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}");
     }
 
     private static (int x, int y) GetWatermarkPosition(WatermarkPosition position, int imgWidth, int imgHeight, float textWidth, float textHeight, int padding)
     {
+        // Ensure watermark fits within image bounds
+        var maxX = Math.Max(0, imgWidth - (int)Math.Ceiling(textWidth));
+        var maxY = Math.Max(0, imgHeight - (int)Math.Ceiling(textHeight));
+
         return position switch
         {
-            WatermarkPosition.TopLeft => (padding, padding),
-            WatermarkPosition.TopRight => (imgWidth - (int)textWidth - padding, padding),
-            WatermarkPosition.BottomLeft => (padding, imgHeight - (int)textHeight - padding),
-            WatermarkPosition.BottomRight => (imgWidth - (int)textWidth - padding, imgHeight - (int)textHeight - padding),
-            WatermarkPosition.Center => ((imgWidth - (int)textWidth) / 2, (imgHeight - (int)textHeight) / 2),
-            _ => (padding, padding)
+            WatermarkPosition.TopLeft => (Math.Min(padding, maxX), Math.Min(padding, maxY)),
+            WatermarkPosition.TopRight => (Math.Max(padding, imgWidth - (int)Math.Ceiling(textWidth) - padding), Math.Min(padding, maxY)),
+            WatermarkPosition.BottomLeft => (Math.Min(padding, maxX), Math.Max(padding, imgHeight - (int)Math.Ceiling(textHeight) - padding)),
+            WatermarkPosition.BottomRight => (Math.Max(padding, imgWidth - (int)Math.Ceiling(textWidth) - padding), Math.Max(padding, imgHeight - (int)Math.Ceiling(textHeight) - padding)),
+            WatermarkPosition.Center => (Math.Max(0, (imgWidth - (int)Math.Ceiling(textWidth)) / 2), Math.Max(0, (imgHeight - (int)Math.Ceiling(textHeight)) / 2)),
+            _ => throw new ArgumentOutOfRangeException(nameof(position), position, "Invalid watermark position")
         };
     }
 
@@ -99,7 +128,8 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
     {
         try
         {
-            switch (_imgExtensionName.ToLower())
+            var extension = _imgExtensionName.ToLowerInvariant();
+            switch (extension)
             {
                 case ".png":
                     img.SaveAsPng(stream);
@@ -121,15 +151,10 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
                     throw new NotSupportedException($"Unsupported image format: {_imgExtensionName}");
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not NotSupportedException)
         {
-            throw new InvalidOperationException("Failed to save image", ex);
+            throw new InvalidOperationException($"Failed to save image as {_imgExtensionName}", ex);
         }
-    }
-
-    public void Dispose()
-    {
-        _originImageStream?.Dispose();
     }
 
     private static string GetAvailableFontForLinux()
@@ -140,13 +165,29 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
             "Verdana",
             "Helvetica",
             "Tahoma",
-            "Terminal",
             "Open Sans",
-            "Monospace",
-            "Ubuntu Mono",
             "DejaVu Sans",
-            "DejaVu Sans Mono"
+            "DejaVu Sans Mono",
+            "Ubuntu Mono",
+            "Liberation Sans",
+            "Monospace"
         };
+
         return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _)) ?? "Arial";
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed && disposing)
+        {
+            _originImageStream?.Dispose();
+            _disposed = true;
+        }
     }
 }

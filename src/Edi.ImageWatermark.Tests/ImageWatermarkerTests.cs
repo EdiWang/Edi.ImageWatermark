@@ -1,12 +1,11 @@
 ﻿using SixLabors.Fonts;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Formats.Gif;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.PixelFormats;
-using System.Runtime.InteropServices;
 using Xunit;
 
 namespace Edi.ImageWatermark.Tests;
@@ -102,7 +101,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream, ".png");
 
-        Assert.Throws<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             watermarker.AddWatermark(null, Color.Red));
     }
 
@@ -112,7 +111,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream, ".png");
 
-        Assert.Throws<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentException>(() =>
             watermarker.AddWatermark("", Color.Red));
     }
 
