@@ -7,10 +7,10 @@ using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
+using Xunit;
 
 namespace Edi.ImageWatermark.Tests;
 
-[TestClass]
 public class ImageWatermarkerTests
 {
     private MemoryStream CreateTestImageStream(int width = 100, int height = 100, string format = ".png")
@@ -44,39 +44,39 @@ public class ImageWatermarkerTests
 
     #region Constructor Tests
 
-    [TestMethod]
+    [Fact]
     public void Constructor_WithValidParameters_ShouldCreateInstance()
     {
         using var imageStream = CreateTestImageStream();
 
         using var watermarker = new ImageWatermarker(imageStream, ".png");
 
-        Assert.IsNotNull(watermarker);
+        Assert.NotNull(watermarker);
     }
 
-    [TestMethod]
+    [Fact]
     public void Constructor_WithPixelsThreshold_ShouldCreateInstance()
     {
         using var imageStream = CreateTestImageStream();
 
         using var watermarker = new ImageWatermarker(imageStream, ".png", 1000);
 
-        Assert.IsNotNull(watermarker);
+        Assert.NotNull(watermarker);
     }
 
-    [TestMethod]
+    [Fact]
     public void Constructor_WithNullImageStream_ShouldThrowArgumentNullException()
     {
-        Assert.ThrowsExactly<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentNullException>(() =>
             new ImageWatermarker(null, ".png"));
     }
 
-    [TestMethod]
+    [Fact]
     public void Constructor_WithNullExtension_ShouldThrowArgumentNullException()
     {
         using var imageStream = CreateTestImageStream();
 
-        Assert.ThrowsExactly<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentNullException>(() =>
             new ImageWatermarker(imageStream, null));
     }
 
@@ -84,7 +84,7 @@ public class ImageWatermarkerTests
 
     #region AddWatermark Tests
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithValidParameters_ShouldReturnWatermarkedImage()
     {
         using var imageStream = CreateTestImageStream();
@@ -92,31 +92,31 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("Test Watermark", Color.Red);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithNullWatermarkText_ShouldThrowArgumentNullException()
     {
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream, ".png");
 
-        Assert.ThrowsExactly<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentNullException>(() =>
             watermarker.AddWatermark(null, Color.Red));
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithEmptyWatermarkText_ShouldThrowArgumentNullException()
     {
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream, ".png");
 
-        Assert.ThrowsExactly<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentNullException>(() =>
             watermarker.AddWatermark("", Color.Red));
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithPixelsThresholdNotMet_ShouldReturnNull()
     {
         using var imageStream = CreateTestImageStream(10, 10); // Small image
@@ -124,10 +124,10 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("Test", Color.Red);
 
-        Assert.IsNull(result);
+        Assert.Null(result);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithPixelsThresholdMet_ShouldReturnWatermarkedImage()
     {
         using var imageStream = CreateTestImageStream(100, 100); // Large enough image
@@ -135,16 +135,16 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("Test", Color.Red);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
-    [DataRow(WatermarkPosition.TopLeft)]
-    [DataRow(WatermarkPosition.TopRight)]
-    [DataRow(WatermarkPosition.BottomLeft)]
-    [DataRow(WatermarkPosition.BottomRight)]
-    [DataRow(WatermarkPosition.Center)]
+    [Theory]
+    [InlineData(WatermarkPosition.TopLeft)]
+    [InlineData(WatermarkPosition.TopRight)]
+    [InlineData(WatermarkPosition.BottomLeft)]
+    [InlineData(WatermarkPosition.BottomRight)]
+    [InlineData(WatermarkPosition.Center)]
     public void AddWatermark_WithDifferentPositions_ShouldReturnWatermarkedImage(WatermarkPosition position)
     {
         using var imageStream = CreateTestImageStream();
@@ -152,11 +152,11 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("Test", Color.Red, position);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithCustomFont_ShouldReturnWatermarkedImage()
     {
         using var imageStream = CreateTestImageStream();
@@ -165,11 +165,11 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("Test", Color.Red, font: font);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithCustomPaddingAndFontSize_ShouldReturnWatermarkedImage()
     {
         using var imageStream = CreateTestImageStream();
@@ -178,21 +178,21 @@ public class ImageWatermarkerTests
         var result = watermarker.AddWatermark("Test", Color.Blue,
             textPadding: 20, fontSize: 24);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
     #endregion
 
     #region SaveImage Tests (via different image formats)
 
-    [TestMethod]
-    [DataRow(".png")]
-    [DataRow(".jpg")]
-    [DataRow(".jpeg")]
-    [DataRow(".bmp")]
-    [DataRow(".gif")]
-    [DataRow(".webp")]
+    [Theory]
+    [InlineData(".png")]
+    [InlineData(".jpg")]
+    [InlineData(".jpeg")]
+    [InlineData(".bmp")]
+    [InlineData(".gif")]
+    [InlineData(".webp")]
     public void AddWatermark_WithSupportedImageFormats_ShouldReturnWatermarkedImage(string format)
     {
         using var imageStream = CreateTestImageStream(format: format);
@@ -200,15 +200,15 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("Test", Color.Red);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
     #endregion
 
     #region GetWatermarkPosition Tests (via position verification)
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithTopLeftPosition_ShouldPlaceWatermarkCorrectly()
     {
         using var imageStream = CreateTestImageStream(200, 200);
@@ -217,11 +217,11 @@ public class ImageWatermarkerTests
         var result = watermarker.AddWatermark("TopLeft", Color.Red,
             WatermarkPosition.TopLeft, textPadding: 5);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithCenterPosition_ShouldPlaceWatermarkCorrectly()
     {
         using var imageStream = CreateTestImageStream(200, 200);
@@ -230,15 +230,15 @@ public class ImageWatermarkerTests
         var result = watermarker.AddWatermark("Center", Color.Red,
             WatermarkPosition.Center);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
     #endregion
 
     #region GetFontName Tests (via different platforms)
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_OnCurrentPlatform_ShouldUseAppropriateFont()
     {
         using var imageStream = CreateTestImageStream();
@@ -247,15 +247,15 @@ public class ImageWatermarkerTests
         // This test verifies that GetFontName() works on the current platform
         var result = watermarker.AddWatermark("Platform Test", Color.Red);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
     #endregion
 
     #region GetAvailableFontForLinux Tests (indirect testing)
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithSystemFont_ShouldHandleFontSelection()
     {
         using var imageStream = CreateTestImageStream();
@@ -264,15 +264,15 @@ public class ImageWatermarkerTests
         // This indirectly tests font selection logic
         var result = watermarker.AddWatermark("Font Test", Color.Green);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
     #endregion
 
     #region Dispose Tests
 
-    [TestMethod]
+    [Fact]
     public void Dispose_ShouldDisposeResourcesProperly()
     {
         var imageStream = CreateTestImageStream();
@@ -281,10 +281,10 @@ public class ImageWatermarkerTests
         watermarker.Dispose();
 
         // Verify that the stream is disposed by checking if it throws when accessed
-        Assert.ThrowsExactly<ObjectDisposedException>(() => imageStream.Read(new byte[1], 0, 1));
+        Assert.Throws<ObjectDisposedException>(() => imageStream.Read(new byte[1], 0, 1));
     }
 
-    [TestMethod]
+    [Fact]
     public void Dispose_CalledMultipleTimes_ShouldNotThrow()
     {
         using var imageStream = CreateTestImageStream();
@@ -293,14 +293,14 @@ public class ImageWatermarkerTests
         watermarker.Dispose();
         watermarker.Dispose(); // Should not throw
 
-        Assert.IsTrue(true); // Test passes if no exception is thrown
+        Assert.True(true); // Test passes if no exception is thrown
     }
 
     #endregion
 
     #region Integration Tests
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_CompleteWorkflow_ShouldProduceValidResult()
     {
         using var imageStream = CreateTestImageStream(300, 200);
@@ -313,17 +313,17 @@ public class ImageWatermarkerTests
             textPadding: 15,
             fontSize: 18);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
 
         // Verify the result can be loaded as an image
         result.Position = 0;
         using var resultImage = Image.Load(result);
-        Assert.AreEqual(300, resultImage.Width);
-        Assert.AreEqual(200, resultImage.Height);
+        Assert.Equal(300, resultImage.Width);
+        Assert.Equal(200, resultImage.Height);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithLargeImage_ShouldHandleEfficiently()
     {
         using var imageStream = CreateTestImageStream(1920, 1080);
@@ -331,15 +331,15 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("Large Image Test", Color.Red);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
     #endregion
 
     #region Edge Cases
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithVerySmallImage_ShouldStillWork()
     {
         using var imageStream = CreateTestImageStream(10, 10);
@@ -347,11 +347,11 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("X", Color.Red, fontSize: 8);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithLongWatermarkText_ShouldHandleGracefully()
     {
         using var imageStream = CreateTestImageStream(500, 100);
@@ -360,11 +360,11 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark(longText, Color.Red, fontSize: 12);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithZeroPadding_ShouldWork()
     {
         using var imageStream = CreateTestImageStream();
@@ -372,11 +372,11 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("No Padding", Color.Red, textPadding: 0);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
-    [TestMethod]
+    [Fact]
     public void AddWatermark_WithLargeFontSize_ShouldWork()
     {
         using var imageStream = CreateTestImageStream(400, 400);
@@ -384,8 +384,8 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark("BIG", Color.Red, fontSize: 72);
 
-        Assert.IsNotNull(result);
-        Assert.IsGreaterThan(0, result.Length);
+        Assert.NotNull(result);
+        Assert.True(result.Length > 0);
     }
 
     #endregion
