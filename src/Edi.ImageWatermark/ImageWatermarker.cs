@@ -20,7 +20,7 @@ public interface IImageWatermarker
         Font font = null);
 }
 
-public class ImageWatermarker : IDisposable, IImageWatermarker
+public sealed class ImageWatermarker : IDisposable, IImageWatermarker
 {
     private readonly bool _skipImageSize;
     private readonly int _pixelsThreshold;
@@ -40,6 +40,18 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
         }
     }
 
+    /// <summary>
+    /// Adds a text watermark to an image.
+    /// </summary>
+    /// <param name="watermarkText">The text to display as watermark.</param>
+    /// <param name="color">The color of the watermark text.</param>
+    /// <param name="watermarkPosition">The position where the watermark should be placed.</param>
+    /// <param name="textPadding">The padding around the watermark text in pixels.</param>
+    /// <param name="fontSize">The font size of the watermark text.</param>
+    /// <param name="font">Optional custom font. If null, a default font will be used.</param>
+    /// <returns>A MemoryStream containing the watermarked image, or null if the image doesn't meet the pixel threshold.</returns>
+    /// <exception cref="ArgumentException">Thrown when watermarkText is null or whitespace.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when textPadding is negative or fontSize is not positive.</exception>
     public MemoryStream AddWatermark(string watermarkText, Color color,
         WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
         int textPadding = 10,
@@ -57,6 +69,12 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
         if (fontSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(fontSize), "Font size must be positive.");
 
+        // Reset stream position before reading
+        if (_originImageStream.CanSeek)
+        {
+            _originImageStream.Position = 0;
+        }
+
         using var img = Image.Load(_originImageStream);
 
         if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
@@ -68,14 +86,14 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
 
         try
         {
-            var f = font ?? ImageWatermarker.GetDefaultFont(fontSize);
+            var f = font ?? GetDefaultFont(fontSize);
             var textSize = TextMeasurer.MeasureBounds(watermarkText, new TextOptions(f));
             var (x, y) = GetWatermarkPosition(watermarkPosition, img.Width, img.Height, textSize.Width, textSize.Height, textPadding);
 
             img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
 
             SaveImage(img, watermarkedStream);
-            watermarkedStream.Position = 0; // Reset position for reading
+            watermarkedStream.Position = 0;
 
             return watermarkedStream;
         }
@@ -173,18 +191,21 @@ public class ImageWatermarker : IDisposable, IImageWatermarker
             "Monospace"
         };
 
-        return fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _)) ?? "Arial";
+        var availableFont = fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _));
+        
+        if (availableFont == null)
+        {
+            throw new InvalidOperationException(
+                "No suitable font found on this Linux system. Available fonts: " +
+                string.Join(", ", SystemFonts.Collection.Families.Select(f => f.Name)));
+        }
+
+        return availableFont;
     }
 
     public void Dispose()
     {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed && disposing)
+        if (!_disposed)
         {
             _originImageStream?.Dispose();
             _disposed = true;
