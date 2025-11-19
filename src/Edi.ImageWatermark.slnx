@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="../.gitattributes" />
+    <File Path="../.github/workflows/dotnet.yml" />
+    <File Path="../.gitignore" />
+    <File Path="../LICENSE" />
+    <File Path="../README.md" />
+  </Folder>
+  <Project Path="Edi.ImageWatermark.Tests/Edi.ImageWatermark.Tests.csproj" />
+  <Project Path="Edi.ImageWatermark/Edi.ImageWatermark.csproj" />
+</Solution>
