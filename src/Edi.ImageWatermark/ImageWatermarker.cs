@@ -1,6 +1,7 @@
 ﻿using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Processing;
 using System;
 using System.IO;
@@ -22,20 +23,18 @@ public interface IImageWatermarker
 
 public sealed class ImageWatermarker : IDisposable, IImageWatermarker
 {
-    private readonly bool _skipImageSize;
+    private readonly bool _checkPixelThreshold;
     private readonly int _pixelsThreshold;
     private readonly Stream _originImageStream;
-    private readonly string _imgExtensionName;
     private bool _disposed;
 
-    public ImageWatermarker(Stream originImageStream, string imgExtensionName, int pixelsThreshold = 0)
+    public ImageWatermarker(Stream originImageStream, int pixelsThreshold = 0)
     {
         _originImageStream = originImageStream ?? throw new ArgumentNullException(nameof(originImageStream));
-        _imgExtensionName = imgExtensionName ?? throw new ArgumentNullException(nameof(imgExtensionName));
 
         if (pixelsThreshold > 0)
         {
-            _skipImageSize = true;
+            _checkPixelThreshold = true;
             _pixelsThreshold = pixelsThreshold;
         }
     }
@@ -75,9 +74,16 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
             _originImageStream.Position = 0;
         }
 
+        var detectedFormat = Image.DetectFormat(_originImageStream);
+
+        if (_originImageStream.CanSeek)
+        {
+            _originImageStream.Position = 0;
+        }
+
         using var img = Image.Load(_originImageStream);
 
-        if (_skipImageSize && img.Height * img.Width < _pixelsThreshold)
+        if (_checkPixelThreshold && img.Height * img.Width < _pixelsThreshold)
         {
             return null;
         }
@@ -92,7 +98,7 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
 
             img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
 
-            SaveImage(img, watermarkedStream);
+            img.Save(watermarkedStream, detectedFormat);
             watermarkedStream.Position = 0;
 
             return watermarkedStream;
@@ -142,39 +148,6 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
         };
     }
 
-    private void SaveImage(Image img, MemoryStream stream)
-    {
-        try
-        {
-            var extension = _imgExtensionName.ToLowerInvariant();
-            switch (extension)
-            {
-                case ".png":
-                    img.SaveAsPng(stream);
-                    break;
-                case ".jpg":
-                case ".jpeg":
-                    img.SaveAsJpeg(stream);
-                    break;
-                case ".bmp":
-                    img.SaveAsBmp(stream);
-                    break;
-                case ".gif":
-                    img.SaveAsGif(stream);
-                    break;
-                case ".webp":
-                    img.SaveAsWebp(stream);
-                    break;
-                default:
-                    throw new NotSupportedException($"Unsupported image format: {_imgExtensionName}");
-            }
-        }
-        catch (Exception ex) when (ex is not NotSupportedException)
-        {
-            throw new InvalidOperationException($"Failed to save image as {_imgExtensionName}", ex);
-        }
-    }
-
     private static string GetAvailableFontForLinux()
     {
         var fontList = new[]
@@ -205,10 +178,6 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
 
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            _originImageStream?.Dispose();
-            _disposed = true;
-        }
+        _disposed = true;
     }
 }
