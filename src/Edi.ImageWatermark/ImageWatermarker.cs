@@ -26,11 +26,13 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
     private readonly bool _checkPixelThreshold;
     private readonly int _pixelsThreshold;
     private readonly Stream _originImageStream;
+    private readonly string _customFontPath;
     private bool _disposed;
 
-    public ImageWatermarker(Stream originImageStream, int pixelsThreshold = 0)
+    public ImageWatermarker(Stream originImageStream, int pixelsThreshold = 0, string customFontPath = null)
     {
         _originImageStream = originImageStream ?? throw new ArgumentNullException(nameof(originImageStream));
+        _customFontPath = customFontPath;
 
         if (pixelsThreshold > 0)
         {
@@ -110,23 +112,20 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
         }
     }
 
-    private static Font GetDefaultFont(int fontSize)
+    private Font GetDefaultFont(int fontSize)
     {
-        var fontName = GetFontName();
-        return SystemFonts.CreateFont(fontName, fontSize, FontStyle.Bold);
-    }
-
-    private static string GetFontName()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        if (!string.IsNullOrEmpty(_customFontPath))
         {
-            return "Arial";
+            if (!File.Exists(_customFontPath))
+                throw new FileNotFoundException($"Custom font file not found: {_customFontPath}", _customFontPath);
+            return LoadFontFromFile(_customFontPath, fontSize);
         }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return GetAvailableFontForLinux();
-        }
+            return GetLinuxFont(fontSize);
 
         throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}");
     }
@@ -148,32 +147,50 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
         };
     }
 
-    private static string GetAvailableFontForLinux()
+    private static Font GetLinuxFont(int fontSize)
     {
-        var fontList = new[]
-        {
-            "Arial",
-            "Verdana",
-            "Helvetica",
-            "Tahoma",
-            "Open Sans",
-            "DejaVu Sans",
-            "DejaVu Sans Mono",
-            "Ubuntu Mono",
-            "Liberation Sans",
-            "Monospace"
-        };
+        string[] preferredFonts =
+        [
+            "Arial", "Liberation Sans", "DejaVu Sans", "Open Sans",
+            "Verdana", "Tahoma", "Ubuntu", "DejaVu Sans Mono", "Ubuntu Mono", "Monospace"
+        ];
 
-        var availableFont = fontList.FirstOrDefault(fontName => SystemFonts.Collection.TryGet(fontName, out _));
-        
-        if (availableFont == null)
+        foreach (var name in preferredFonts)
         {
-            throw new InvalidOperationException(
-                "No suitable font found on this Linux system. Available fonts: " +
-                string.Join(", ", SystemFonts.Collection.Families.Select(f => f.Name)));
+            if (SystemFonts.Collection.TryGet(name, out var family))
+                return family.CreateFont(fontSize, FontStyle.Bold);
         }
 
-        return availableFont;
+        // Try any registered system font
+        foreach (var family in SystemFonts.Collection.Families)
+        {
+            return family.CreateFont(fontSize, FontStyle.Bold);
+        }
+
+        // Scan common font directories as a last resort (e.g., when fontconfig cache is unavailable)
+        string[] fontDirs = ["/usr/share/fonts", "/usr/local/share/fonts"];
+        foreach (var dir in fontDirs)
+        {
+            if (!Directory.Exists(dir)) continue;
+            var fontFile = Directory.EnumerateFiles(dir, "*.ttf", SearchOption.AllDirectories)
+                .Concat(Directory.EnumerateFiles(dir, "*.otf", SearchOption.AllDirectories))
+                .FirstOrDefault();
+            if (fontFile is not null)
+                return LoadFontFromFile(fontFile, fontSize);
+        }
+
+        throw new InvalidOperationException(
+            "No suitable font found on this Linux system. " +
+            "Install fonts via your package manager (e.g., 'apt-get install -y fonts-liberation' on Debian/Ubuntu, " +
+            "or 'apk add ttf-liberation' on Alpine Linux), " +
+            "or pass a font file path to the ImageWatermarker constructor.");
+    }
+
+    private static Font LoadFontFromFile(string fontFilePath, int fontSize)
+    {
+        var collection = new FontCollection();
+        var family = collection.Add(fontFilePath);
+        return family.CreateFont(fontSize, FontStyle.Bold);
     }
 
     public void Dispose()
