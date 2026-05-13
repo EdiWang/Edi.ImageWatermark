@@ -83,7 +83,10 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
                 Color = color,
                 IsAntialias = true
             };
-            using var font = new SKFont(typeface ?? GetDefaultTypeface(), fontSize);
+            var effectiveTypeface = typeface;
+            using var ownedTypeface = typeface is null ? GetDefaultTypeface() : null;
+            effectiveTypeface ??= ownedTypeface;
+            using var font = new SKFont(effectiveTypeface, fontSize);
 
             font.MeasureText(watermarkText, out var textBounds, paint);
             var (x, y) = GetWatermarkPosition(watermarkPosition, img.Width, img.Height, textBounds.Width, textBounds.Height, textPadding);
