@@ -16,6 +16,9 @@ public class ImageWatermarkerTests
         {
             ".jpg" or ".jpeg" => SKEncodedImageFormat.Jpeg,
             ".webp" => SKEncodedImageFormat.Webp,
+            ".bmp" => SKEncodedImageFormat.Bmp,
+            ".gif" => SKEncodedImageFormat.Gif,
+            ".png" => SKEncodedImageFormat.Png,
             _ => SKEncodedImageFormat.Png
         };
 
