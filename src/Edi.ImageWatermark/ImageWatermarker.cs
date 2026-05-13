@@ -1,24 +1,18 @@
-﻿using SixLabors.Fonts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Processing;
+﻿using SkiaSharp;
 using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Color = SixLabors.ImageSharp.Color;
-using PointF = SixLabors.ImageSharp.PointF;
 
 namespace Edi.ImageWatermark;
 
 public interface IImageWatermarker
 {
-    MemoryStream AddWatermark(string watermarkText, Color color,
+    MemoryStream AddWatermark(string watermarkText, SKColor color,
         WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
         int textPadding = 10,
         int fontSize = 20,
-        Font font = null);
+        SKTypeface typeface = null);
 }
 
 public sealed class ImageWatermarker : IDisposable, IImageWatermarker
@@ -49,15 +43,15 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
     /// <param name="watermarkPosition">The position where the watermark should be placed.</param>
     /// <param name="textPadding">The padding around the watermark text in pixels.</param>
     /// <param name="fontSize">The font size of the watermark text.</param>
-    /// <param name="font">Optional custom font. If null, a default font will be used.</param>
+    /// <param name="typeface">Optional custom typeface. If null, a default typeface will be used.</param>
     /// <returns>A MemoryStream containing the watermarked image, or null if the image doesn't meet the pixel threshold.</returns>
     /// <exception cref="ArgumentException">Thrown when watermarkText is null or whitespace.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when textPadding is negative or fontSize is not positive.</exception>
-    public MemoryStream AddWatermark(string watermarkText, Color color,
+    public MemoryStream AddWatermark(string watermarkText, SKColor color,
         WatermarkPosition watermarkPosition = WatermarkPosition.BottomRight,
         int textPadding = 10,
         int fontSize = 20,
-        Font font = null)
+        SKTypeface typeface = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -70,20 +64,9 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
         if (fontSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(fontSize), "Font size must be positive.");
 
-        // Reset stream position before reading
-        if (_originImageStream.CanSeek)
-        {
-            _originImageStream.Position = 0;
-        }
-
-        var detectedFormat = Image.DetectFormat(_originImageStream);
-
-        if (_originImageStream.CanSeek)
-        {
-            _originImageStream.Position = 0;
-        }
-
-        using var img = Image.Load(_originImageStream);
+        var imageBytes = ReadOriginImageBytes();
+        var detectedFormat = DetectFormat(imageBytes);
+        using var img = SKBitmap.Decode(imageBytes) ?? throw new InvalidOperationException("Unable to decode image.");
 
         if (_checkPixelThreshold && img.Height * img.Width < _pixelsThreshold)
         {
@@ -94,13 +77,23 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
 
         try
         {
-            var f = font ?? GetDefaultFont(fontSize);
-            var textSize = TextMeasurer.MeasureBounds(watermarkText, new TextOptions(f));
-            var (x, y) = GetWatermarkPosition(watermarkPosition, img.Width, img.Height, textSize.Width, textSize.Height, textPadding);
+            using var canvas = new SKCanvas(img);
+            using var paint = new SKPaint
+            {
+                Color = color,
+                IsAntialias = true
+            };
+            using var font = new SKFont(typeface ?? GetDefaultTypeface(), fontSize);
 
-            img.Mutate(ctx => ctx.DrawText(watermarkText, f, color, new PointF(x, y)));
+            font.MeasureText(watermarkText, out var textBounds, paint);
+            var (x, y) = GetWatermarkPosition(watermarkPosition, img.Width, img.Height, textBounds.Width, textBounds.Height, textPadding);
 
-            img.Save(watermarkedStream, detectedFormat);
+            canvas.DrawText(watermarkText, x - textBounds.Left, y - textBounds.Top, font, paint);
+            canvas.Flush();
+
+            using var image = SKImage.FromBitmap(img);
+            using var data = image.Encode(detectedFormat, 100);
+            data.SaveTo(watermarkedStream);
             watermarkedStream.Position = 0;
 
             return watermarkedStream;
@@ -112,20 +105,59 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
         }
     }
 
-    private Font GetDefaultFont(int fontSize)
+    private byte[] ReadOriginImageBytes()
+    {
+        if (_originImageStream.CanSeek)
+        {
+            _originImageStream.Position = 0;
+        }
+
+        using var buffer = new MemoryStream();
+        _originImageStream.CopyTo(buffer);
+        return buffer.ToArray();
+    }
+
+    private static SKEncodedImageFormat DetectFormat(byte[] imageBytes)
+    {
+        using var stream = new SKMemoryStream(imageBytes);
+        using var codec = SKCodec.Create(stream) ?? throw new InvalidOperationException("Unable to detect image format.");
+
+        return codec.EncodedFormat switch
+        {
+            SKEncodedImageFormat.Bmp => SKEncodedImageFormat.Bmp,
+            SKEncodedImageFormat.Gif => SKEncodedImageFormat.Gif,
+            SKEncodedImageFormat.Jpeg => SKEncodedImageFormat.Jpeg,
+            SKEncodedImageFormat.Png => SKEncodedImageFormat.Png,
+            SKEncodedImageFormat.Webp => SKEncodedImageFormat.Webp,
+            _ => SKEncodedImageFormat.Png
+        };
+    }
+
+    private static SKEncodedImageFormat GetSupportedOutputFormat(SKEncodedImageFormat format)
+    {
+        return format switch
+        {
+            SKEncodedImageFormat.Jpeg => SKEncodedImageFormat.Jpeg,
+            SKEncodedImageFormat.Png => SKEncodedImageFormat.Png,
+            SKEncodedImageFormat.Webp => SKEncodedImageFormat.Webp,
+            _ => SKEncodedImageFormat.Png
+        };
+    }
+
+    private SKTypeface GetDefaultTypeface()
     {
         if (!string.IsNullOrEmpty(_customFontPath))
         {
             if (!File.Exists(_customFontPath))
                 throw new FileNotFoundException($"Custom font file not found: {_customFontPath}", _customFontPath);
-            return LoadFontFromFile(_customFontPath, fontSize);
+            return LoadTypefaceFromFile(_customFontPath);
         }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
+            return SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold) ?? SKTypeface.Default;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return GetLinuxFont(fontSize);
+            return GetLinuxTypeface();
 
         throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}");
     }
@@ -147,7 +179,7 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
         };
     }
 
-    private static Font GetLinuxFont(int fontSize)
+    private static SKTypeface GetLinuxTypeface()
     {
         string[] preferredFonts =
         [
@@ -157,14 +189,9 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
 
         foreach (var name in preferredFonts)
         {
-            if (SystemFonts.Collection.TryGet(name, out var family))
-                return family.CreateFont(fontSize, FontStyle.Bold);
-        }
-
-        // Try any registered system font
-        foreach (var family in SystemFonts.Collection.Families)
-        {
-            return family.CreateFont(fontSize, FontStyle.Bold);
+            var typeface = SKTypeface.FromFamilyName(name, SKFontStyle.Bold);
+            if (typeface is not null && !string.Equals(typeface.FamilyName, SKTypeface.Default.FamilyName, StringComparison.OrdinalIgnoreCase))
+                return typeface;
         }
 
         // Scan common font directories as a last resort (e.g., when fontconfig cache is unavailable)
@@ -176,7 +203,7 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
                 .Concat(Directory.EnumerateFiles(dir, "*.otf", SearchOption.AllDirectories))
                 .FirstOrDefault();
             if (fontFile is not null)
-                return LoadFontFromFile(fontFile, fontSize);
+                return LoadTypefaceFromFile(fontFile);
         }
 
         throw new InvalidOperationException(
@@ -186,11 +213,9 @@ public sealed class ImageWatermarker : IDisposable, IImageWatermarker
             "or pass a font file path to the ImageWatermarker constructor.");
     }
 
-    private static Font LoadFontFromFile(string fontFilePath, int fontSize)
+    private static SKTypeface LoadTypefaceFromFile(string fontFilePath)
     {
-        var collection = new FontCollection();
-        var family = collection.Add(fontFilePath);
-        return family.CreateFont(fontSize, FontStyle.Bold);
+        return SKTypeface.FromFile(fontFilePath) ?? throw new InvalidOperationException($"Unable to load font file: {fontFilePath}");
     }
 
     public void Dispose()

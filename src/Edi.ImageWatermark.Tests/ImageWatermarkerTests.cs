@@ -1,11 +1,4 @@
-﻿using SixLabors.Fonts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Bmp;
-using SixLabors.ImageSharp.Formats.Gif;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Formats.Webp;
-using SixLabors.ImageSharp.PixelFormats;
+﻿using SkiaSharp;
 using Xunit;
 
 namespace Edi.ImageWatermark.Tests;
@@ -15,27 +8,19 @@ public class ImageWatermarkerTests
     private MemoryStream CreateTestImageStream(int width = 100, int height = 100, string format = ".png")
     {
         var imageStream = new MemoryStream();
-        using var image = new Image<Rgba32>(width, height);
+        using var bitmap = new SKBitmap(width, height);
+        bitmap.Erase(SKColors.White);
+        using var image = SKImage.FromBitmap(bitmap);
 
-        switch (format.ToLower())
+        var encodedFormat = format.ToLowerInvariant() switch
         {
-            case ".png":
-                image.Save(imageStream, new PngEncoder());
-                break;
-            case ".jpg":
-            case ".jpeg":
-                image.Save(imageStream, new JpegEncoder());
-                break;
-            case ".bmp":
-                image.Save(imageStream, new BmpEncoder());
-                break;
-            case ".gif":
-                image.Save(imageStream, new GifEncoder());
-                break;
-            case ".webp":
-                image.Save(imageStream, new WebpEncoder());
-                break;
-        }
+            ".jpg" or ".jpeg" => SKEncodedImageFormat.Jpeg,
+            ".webp" => SKEncodedImageFormat.Webp,
+            _ => SKEncodedImageFormat.Png
+        };
+
+        using var data = image.Encode(encodedFormat, 100);
+        data.SaveTo(imageStream);
 
         imageStream.Position = 0;
         return imageStream;
@@ -80,7 +65,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("Test Watermark", Color.Red);
+        var result = watermarker.AddWatermark("Test Watermark", SKColors.Red);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -93,7 +78,7 @@ public class ImageWatermarkerTests
         using var watermarker = new ImageWatermarker(imageStream);
 
         Assert.Throws<ArgumentException>(() =>
-            watermarker.AddWatermark(null, Color.Red));
+            watermarker.AddWatermark(null, SKColors.Red));
     }
 
     [Fact]
@@ -103,7 +88,7 @@ public class ImageWatermarkerTests
         using var watermarker = new ImageWatermarker(imageStream);
 
         Assert.Throws<ArgumentException>(() =>
-            watermarker.AddWatermark("", Color.Red));
+            watermarker.AddWatermark("", SKColors.Red));
     }
 
     [Fact]
@@ -112,7 +97,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(10, 10); // Small image
         using var watermarker = new ImageWatermarker(imageStream, 1000); // High threshold
 
-        var result = watermarker.AddWatermark("Test", Color.Red);
+        var result = watermarker.AddWatermark("Test", SKColors.Red);
 
         Assert.Null(result);
     }
@@ -123,7 +108,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(100, 100); // Large enough image
         using var watermarker = new ImageWatermarker(imageStream, 1000); // Lower threshold
 
-        var result = watermarker.AddWatermark("Test", Color.Red);
+        var result = watermarker.AddWatermark("Test", SKColors.Red);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -140,7 +125,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("Test", Color.Red, position);
+        var result = watermarker.AddWatermark("Test", SKColors.Red, position);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -151,9 +136,9 @@ public class ImageWatermarkerTests
     {
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream);
-        var font = SystemFonts.CreateFont("Arial", 16, FontStyle.Bold);
+        using var typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold);
 
-        var result = watermarker.AddWatermark("Test", Color.Red, font: font);
+        var result = watermarker.AddWatermark("Test", SKColors.Red, typeface: typeface);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -165,7 +150,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("Test", Color.Blue,
+        var result = watermarker.AddWatermark("Test", SKColors.Blue,
             textPadding: 20, fontSize: 24);
 
         Assert.NotNull(result);
@@ -188,7 +173,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(format: format);
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("Test", Color.Red);
+        var result = watermarker.AddWatermark("Test", SKColors.Red);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -204,7 +189,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(200, 200);
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("TopLeft", Color.Red,
+        var result = watermarker.AddWatermark("TopLeft", SKColors.Red,
             WatermarkPosition.TopLeft, textPadding: 5);
 
         Assert.NotNull(result);
@@ -217,7 +202,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(200, 200);
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("Center", Color.Red,
+        var result = watermarker.AddWatermark("Center", SKColors.Red,
             WatermarkPosition.Center);
 
         Assert.NotNull(result);
@@ -235,7 +220,7 @@ public class ImageWatermarkerTests
         using var watermarker = new ImageWatermarker(imageStream);
 
         // This test verifies that GetFontName() works on the current platform
-        var result = watermarker.AddWatermark("Platform Test", Color.Red);
+        var result = watermarker.AddWatermark("Platform Test", SKColors.Red);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -252,7 +237,7 @@ public class ImageWatermarkerTests
         using var watermarker = new ImageWatermarker(imageStream);
 
         // This indirectly tests font selection logic
-        var result = watermarker.AddWatermark("Font Test", Color.Green);
+        var result = watermarker.AddWatermark("Font Test", SKColors.Green);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -301,7 +286,7 @@ public class ImageWatermarkerTests
 
         var result = watermarker.AddWatermark(
             "© 2024 Test Company",
-            Color.White,
+            SKColors.White,
             WatermarkPosition.BottomRight,
             textPadding: 15,
             fontSize: 18);
@@ -311,7 +296,7 @@ public class ImageWatermarkerTests
 
         // Verify the result can be loaded as an image
         result.Position = 0;
-        using var resultImage = Image.Load(result);
+        using var resultImage = SKBitmap.Decode(result);
         Assert.Equal(300, resultImage.Width);
         Assert.Equal(200, resultImage.Height);
     }
@@ -322,7 +307,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(1920, 1080);
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("Large Image Test", Color.Red);
+        var result = watermarker.AddWatermark("Large Image Test", SKColors.Red);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -338,7 +323,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(10, 10);
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("X", Color.Red, fontSize: 8);
+        var result = watermarker.AddWatermark("X", SKColors.Red, fontSize: 8);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -351,7 +336,7 @@ public class ImageWatermarkerTests
         using var watermarker = new ImageWatermarker(imageStream);
         var longText = "This is a very long watermark text that might exceed the image boundaries";
 
-        var result = watermarker.AddWatermark(longText, Color.Red, fontSize: 12);
+        var result = watermarker.AddWatermark(longText, SKColors.Red, fontSize: 12);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -363,7 +348,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream();
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("No Padding", Color.Red, textPadding: 0);
+        var result = watermarker.AddWatermark("No Padding", SKColors.Red, textPadding: 0);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);
@@ -375,7 +360,7 @@ public class ImageWatermarkerTests
         using var imageStream = CreateTestImageStream(400, 400);
         using var watermarker = new ImageWatermarker(imageStream);
 
-        var result = watermarker.AddWatermark("BIG", Color.Red, fontSize: 72);
+        var result = watermarker.AddWatermark("BIG", SKColors.Red, fontSize: 72);
 
         Assert.NotNull(result);
         Assert.True(result.Length > 0);

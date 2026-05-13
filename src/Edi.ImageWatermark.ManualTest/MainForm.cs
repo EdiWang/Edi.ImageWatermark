@@ -1,4 +1,4 @@
-using SixLabors.ImageSharp;
+using SkiaSharp;
 using Color = System.Drawing.Color;
 using Image = System.Drawing.Image;
 
@@ -35,8 +35,8 @@ public partial class MainForm : Form
         picOriginal.Image?.Dispose();
         picOriginal.Image = Image.FromFile(_selectedImagePath);
 
-        var info = SixLabors.ImageSharp.Image.Identify(_selectedImagePath);
-        lblImageInfo.Text = $"{Path.GetFileName(_selectedImagePath)}  ({info.Width}×{info.Height})";
+        using var codec = SKCodec.Create(_selectedImagePath);
+        lblImageInfo.Text = $"{Path.GetFileName(_selectedImagePath)}  ({codec.Info.Width}×{codec.Info.Height})";
         lblImageInfo.ForeColor = SystemColors.ControlText;
 
         btnApplyWatermark.Enabled = true;
@@ -78,7 +78,7 @@ public partial class MainForm : Form
             var fontSize = (int)nudFontSize.Value;
             var padding = (int)nudPadding.Value;
 
-            var color = SixLabors.ImageSharp.Color.FromRgba(
+            var color = new SKColor(
                 _watermarkColor.R, _watermarkColor.G, _watermarkColor.B, _watermarkColor.A);
 
             _watermarkedStream?.Dispose();
