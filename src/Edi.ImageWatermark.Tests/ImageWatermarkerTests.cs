@@ -8,9 +8,9 @@ public class ImageWatermarkerTests
     private MemoryStream CreateTestImageStream(int width = 100, int height = 100, string format = ".png")
     {
         var imageStream = new MemoryStream();
-        using var bitmap = new SKBitmap(width, height);
-        bitmap.Erase(SKColors.White);
-        using var image = SKImage.FromBitmap(bitmap);
+        using var surface = SKSurface.Create(new SKImageInfo(width, height));
+        var canvas = surface.Canvas;
+        canvas.Clear(SKColors.White);
 
         var encodedFormat = format.ToLowerInvariant() switch
         {
@@ -22,8 +22,19 @@ public class ImageWatermarkerTests
             _ => SKEncodedImageFormat.Png
         };
 
+        using var image = surface.Snapshot();
         using var data = image.Encode(encodedFormat, 100);
-        data.SaveTo(imageStream);
+
+        if (data == null)
+        {
+            // Fallback to PNG for unsupported formats
+            using var pngData = image.Encode(SKEncodedImageFormat.Png, 100);
+            pngData.SaveTo(imageStream);
+        }
+        else
+        {
+            data.SaveTo(imageStream);
+        }
 
         imageStream.Position = 0;
         return imageStream;
