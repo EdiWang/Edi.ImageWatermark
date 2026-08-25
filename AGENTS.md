@@ -1,6 +1,6 @@
-# Copilot Instructions for Edi.ImageWatermark
+# AGENTS.md
 
-## Project Overview
+## Project overview
 
 Edi.ImageWatermark is a small .NET class library for adding text watermarks to images with SkiaSharp. The public surface is intentionally compact:
 
@@ -11,7 +11,7 @@ Edi.ImageWatermark is a small .NET class library for adding text watermarks to i
 
 Treat this as a NuGet package first. Avoid changes that casually alter public API behavior, constructor parameters, method signatures, default values, package metadata, or encoded output behavior.
 
-## Build and Test
+## Build and test
 
 Run commands from the `src` directory unless noted otherwise:
 
@@ -23,7 +23,7 @@ dotnet pack Edi.ImageWatermark/Edi.ImageWatermark.csproj --configuration Release
 
 The GitHub Actions workflow uses Windows and .NET `10.0.x`. Keep changes compatible with the current `net10.0` target unless the task explicitly asks for framework changes.
 
-## Coding Conventions
+## Coding conventions
 
 - Follow the existing file-scoped namespace style.
 - Prefer simple, explicit C# over new abstractions; this library has a deliberately small implementation.
@@ -33,15 +33,15 @@ The GitHub Actions workflow uses Windows and .NET `10.0.x`. Keep changes compati
 - Do not add broad catch blocks unless they preserve disposal semantics and rethrow without hiding the original exception.
 - Do not introduce external image files for tests when SkiaSharp can generate test images in memory.
 
-## Image Processing Rules
+## Image processing rules
 
-- Decode input with SkiaSharp and preserve the detected encoded format when saving whenever supported by SkiaSharp.
+- Decode input with SkiaSharp and preserve the detected encoded format when saving whenever supported by SkiaSharp. When the detected format is not supported for encoding by SkiaSharp, fall back to PNG and do not throw; document this behavior with a test.
 - Be careful with coordinate math. Watermark placement should keep text within image bounds for all `WatermarkPosition` values, including small images and large text.
 - Continue supporting the pixel-threshold behavior: when enabled and the image area is below the threshold, `AddWatermark` returns `null`.
-- Font selection must stay cross-platform. Windows/macOS use Arial when available; Linux should try common installed font families and then common font directories before failing with a useful message.
+- Font selection must stay cross-platform. Windows/macOS use Arial when available; Linux should try font families ["DejaVu Sans", "Liberation Sans", "FreeSans", "Noto Sans"] and directories ["/usr/share/fonts", "/usr/local/share/fonts", "~/.fonts"] before failing.
 - If a custom font path is supplied, validate that the file exists and load the typeface from that file.
 
-## Testing Guidance
+## Testing guidance
 
 - Add or update xUnit tests for every behavior change in `ImageWatermarker`.
 - Prefer `[Fact]` for single behavior checks and `[Theory]` with `[InlineData]` for positions or formats.
@@ -49,7 +49,7 @@ The GitHub Actions workflow uses Windows and .NET `10.0.x`. Keep changes compati
 - Test public behavior rather than private helpers directly. The existing tests exercise private positioning, format, and font logic through `AddWatermark`.
 - For format-related changes, cover `.png`, `.jpg`/`.jpeg`, `.bmp`, `.gif`, and `.webp` where practical.
 
-## Packaging and Repository Notes
+## Packaging and repository notes
 
 - The NuGet package includes the root `README.md` and `img/edi-logo-blue.png`; do not remove these packing items accidentally.
 - Avoid changing `<Version>`, package metadata, or publish workflow behavior unless the task is specifically release-related.
